@@ -73,13 +73,15 @@ if __name__ == '__main__':
             with gr.TabItem("TTS"):
                 with gr.Column():
                     tts_input1 = gr.TextArea(label="Text", value="こんにちは。")
-                    tts_input2 = gr.Dropdown(label="Speaker", choices=hps.speakers, type="index")
+                    tts_input2 = gr.Dropdown(label="Speaker", choices=hps.speakers, type="index", value=hps.speakers[0])
                     tts_submit = gr.Button("Generate", variant="primary")
                     tts_output = gr.Audio(label="Output Audio")
             with gr.TabItem("Voice Conversion"):
                 with gr.Column():
-                    vc_input1 = gr.Dropdown(label="Original Speaker", choices=hps.speakers, type="index")
-                    vc_input2 = gr.Dropdown(label="Target Speaker", choices=hps.speakers, type="index")
+                    vc_input1 = gr.Dropdown(label="Original Speaker", choices=hps.speakers, type="index",
+                                            value=hps.speakers[0])
+                    vc_input2 = gr.Dropdown(label="Target Speaker", choices=hps.speakers, type="index",
+                                            value=hps.speakers[1])
                     vc_input3 = gr.Audio(label="Input Audio")
                     vc_submit = gr.Button("Convert", variant="primary")
                     vc_output = gr.Audio(label="Output Audio")
