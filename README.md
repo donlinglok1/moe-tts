@@ -1,6 +1,6 @@
 ---
-title: Moe Japanese Tts
-emoji: 🦀
+title: Moe Japanese TTS
+emoji: 😊🎙️
 colorFrom: red
 colorTo: pink
 sdk: gradio
