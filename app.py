@@ -1,3 +1,7 @@
+import os
+
+os.system('cd monotonic_align && python setup.py build_ext --inplace && cd ..')
+
 import numpy as np
 import torch
 from torch import no_grad, LongTensor
