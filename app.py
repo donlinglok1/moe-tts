@@ -23,6 +23,8 @@ def get_text(text):
 
 
 def tts_fn(text, speaker_id):
+    if len(text) > 150:
+        return "Error: Text is too long", None
     stn_tst = get_text(text)
     with no_grad():
         x_tst = stn_tst.unsqueeze(0)
@@ -30,11 +32,16 @@ def tts_fn(text, speaker_id):
         sid = LongTensor([speaker_id])
         audio = model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0][
             0, 0].data.cpu().float().numpy()
-    return hps.data.sampling_rate, audio
+    return "Success", (hps.data.sampling_rate, audio)
 
 
 def vc_fn(original_speaker_id, target_speaker_id, input_audio):
+    if input_audio is None:
+        return "You need to upload an audio", None
     sampling_rate, audio = input_audio
+    duration = audio.shape[0] / sampling_rate
+    if duration > 30:
+        return "Error: Audio is too long", None
     audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
     if len(audio.shape) > 1:
         audio = librosa.to_mono(audio.transpose(1, 0))
@@ -51,7 +58,7 @@ def vc_fn(original_speaker_id, target_speaker_id, input_audio):
     with no_grad():
         audio = model.voice_conversion(spec, spec_lengths, sid_src=sid_src, sid_tgt=sid_tgt)[0][
             0, 0].data.cpu().float().numpy()
-    return hps.data.sampling_rate, audio
+    return "Success", (hps.data.sampling_rate, audio)
 
 
 if __name__ == '__main__':
@@ -77,21 +84,23 @@ if __name__ == '__main__':
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Column():
-                    tts_input1 = gr.TextArea(label="Text", value="こんにちは。")
+                    tts_input1 = gr.TextArea(label="Text (150 words limitation)", value="こんにちは。")
                     tts_input2 = gr.Dropdown(label="Speaker", choices=hps.speakers, type="index", value=hps.speakers[0])
                     tts_submit = gr.Button("Generate", variant="primary")
-                    tts_output = gr.Audio(label="Output Audio")
+                    tts_output1 = gr.Textbox(label="Output Message")
+                    tts_output2 = gr.Audio(label="Output Audio")
             with gr.TabItem("Voice Conversion"):
                 with gr.Column():
                     vc_input1 = gr.Dropdown(label="Original Speaker", choices=hps.speakers, type="index",
                                             value=hps.speakers[0])
                     vc_input2 = gr.Dropdown(label="Target Speaker", choices=hps.speakers, type="index",
                                             value=hps.speakers[1])
-                    vc_input3 = gr.Audio(label="Input Audio")
+                    vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
                     vc_submit = gr.Button("Convert", variant="primary")
-                    vc_output = gr.Audio(label="Output Audio")
+                    vc_output1 = gr.Textbox(label="Output Message")
+                    vc_output2 = gr.Audio(label="Output Audio")
 
-        tts_submit.click(tts_fn, [tts_input1, tts_input2], [tts_output])
-        vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output])
+        tts_submit.click(tts_fn, [tts_input1, tts_input2], [tts_output1, tts_output2])
+        vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
 
     app.launch()
