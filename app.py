@@ -2,6 +2,7 @@ import os
 
 os.system('cd monotonic_align && python setup.py build_ext --inplace && cd ..')
 
+import librosa
 import numpy as np
 import torch
 from torch import no_grad, LongTensor
@@ -34,9 +35,13 @@ def tts_fn(text, speaker_id):
 
 def vc_fn(original_speaker_id, target_speaker_id, input_audio):
     sampling_rate, audio = input_audio
-    y = torch.FloatTensor(audio.astype(np.float32)) / hps.data.max_wav_value
+    audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
+    if len(audio.shape) > 1:
+        audio = librosa.to_mono(audio.transpose(1, 0))
+    if sampling_rate != hps.data.sampling_rate:
+        audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=hps.data.sampling_rate)
+    y = torch.FloatTensor(audio)
     y = y.unsqueeze(0)
-
     spec = spectrogram_torch(y, hps.data.filter_length,
                              hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
                              center=False)
