@@ -14,7 +14,7 @@ from text import text_to_sequence
 from mel_processing import spectrogram_torch
 
 
-def get_text(text):
+def get_text(text, hps):
     text_norm = text_to_sequence(text, hps.symbols, hps.data.text_cleaners)
     if hps.data.add_blank:
         text_norm = commons.intersperse(text_norm, 0)
@@ -22,10 +22,12 @@ def get_text(text):
     return text_norm
 
 
-def tts_fn(text, speaker_id):
+def tts_fn(text, speaker):
     if len(text) > 150:
         return "Error: Text is too long", None
-    stn_tst = get_text(text)
+    model, hps = models[model_idx[speaker]]
+    speaker_id = speaker_idx[speaker]
+    stn_tst = get_text(text, hps)
     with no_grad():
         x_tst = stn_tst.unsqueeze(0)
         x_tst_lengths = LongTensor([stn_tst.size(0)])
@@ -35,13 +37,20 @@ def tts_fn(text, speaker_id):
     return "Success", (hps.data.sampling_rate, audio)
 
 
-def vc_fn(original_speaker_id, target_speaker_id, input_audio):
+def vc_fn(original_speaker, target_speaker, input_audio):
     if input_audio is None:
         return "You need to upload an audio", None
     sampling_rate, audio = input_audio
     duration = audio.shape[0] / sampling_rate
     if duration > 30:
         return "Error: Audio is too long", None
+    if model_idx[original_speaker] != model_idx[target_speaker]:
+        return "Error: Can not convert voice between different model", None
+
+    model, hps = models[model_idx[original_speaker]]
+    original_speaker_id = speaker_idx[original_speaker]
+    target_speaker_id = speaker_idx[target_speaker]
+
     audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
     if len(audio.shape) > 1:
         audio = librosa.to_mono(audio.transpose(1, 0))
@@ -62,17 +71,26 @@ def vc_fn(original_speaker_id, target_speaker_id, input_audio):
 
 
 if __name__ == '__main__':
-    config_path = "saved_model/config.json"
-    model_path = "saved_model/model.pth"
-    hps = utils.get_hparams_from_file(config_path)
-    model = SynthesizerTrn(
-        len(hps.symbols),
-        hps.data.filter_length // 2 + 1,
-        hps.train.segment_size // hps.data.hop_length,
-        n_speakers=hps.data.n_speakers,
-        **hps.model)
-    utils.load_checkpoint(model_path, model, None)
-    model.eval()
+    models = []
+    model_idx = []
+    speaker_idx = []
+    speakers = []
+    for i in range(0, 2):
+        config_path = f"saved_model/{i}/config.json"
+        model_path = f"saved_model/{i}/model.pth"
+        hps = utils.get_hparams_from_file(config_path)
+        model = SynthesizerTrn(
+            len(hps.symbols),
+            hps.data.filter_length // 2 + 1,
+            hps.train.segment_size // hps.data.hop_length,
+            n_speakers=hps.data.n_speakers,
+            **hps.model)
+        utils.load_checkpoint(model_path, model, None)
+        model.eval()
+        models.append((model, hps))
+        speakers = speakers + [f"model{i}/{x}" for x in hps.speakers]
+        model_idx = model_idx + [i] * len(hps.speakers)
+        speaker_idx = speaker_idx + list(range(0, len(hps.speakers)))
 
     app = gr.Blocks()
 
@@ -85,16 +103,16 @@ if __name__ == '__main__':
             with gr.TabItem("TTS"):
                 with gr.Column():
                     tts_input1 = gr.TextArea(label="Text (150 words limitation)", value="こんにちは。")
-                    tts_input2 = gr.Dropdown(label="Speaker", choices=hps.speakers, type="index", value=hps.speakers[0])
+                    tts_input2 = gr.Dropdown(label="Speaker", choices=speakers, type="index", value=speakers[0])
                     tts_submit = gr.Button("Generate", variant="primary")
                     tts_output1 = gr.Textbox(label="Output Message")
                     tts_output2 = gr.Audio(label="Output Audio")
             with gr.TabItem("Voice Conversion"):
                 with gr.Column():
-                    vc_input1 = gr.Dropdown(label="Original Speaker", choices=hps.speakers, type="index",
-                                            value=hps.speakers[0])
-                    vc_input2 = gr.Dropdown(label="Target Speaker", choices=hps.speakers, type="index",
-                                            value=hps.speakers[1])
+                    vc_input1 = gr.Dropdown(label="Original Speaker", choices=speakers, type="index",
+                                            value=speakers[0])
+                    vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
+                                            value=speakers[1])
                     vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
                     vc_submit = gr.Button("Convert", variant="primary")
                     vc_output1 = gr.Textbox(label="Output Message")
