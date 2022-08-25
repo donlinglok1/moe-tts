@@ -1,8 +1,4 @@
 import json
-import os
-
-os.system('cd monotonic_align && python setup.py build_ext --inplace && cd ..')
-
 import librosa
 import numpy as np
 import torch
