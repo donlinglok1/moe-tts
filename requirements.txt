@@ -1,4 +1,4 @@
-Cython
+numba
 librosa
 matplotlib
 numpy
