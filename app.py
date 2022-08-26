@@ -20,7 +20,7 @@ def get_text(text, hps):
 
 
 def create_tts_fn(model, hps, speaker_ids):
-    def tts_fn(text, speaker):
+    def tts_fn(text, speaker, speed):
         if len(text) > 150:
             return "Error: Text is too long", None
         speaker_id = speaker_ids[speaker]
@@ -29,9 +29,8 @@ def create_tts_fn(model, hps, speaker_ids):
             x_tst = stn_tst.unsqueeze(0)
             x_tst_lengths = LongTensor([stn_tst.size(0)])
             sid = LongTensor([speaker_id])
-            audio = \
-                model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0][
-                    0, 0].data.cpu().float().numpy()
+            audio = model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8,
+                                length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
         return "Success", (hps.data.sampling_rate, audio)
 
     return tts_fn
@@ -112,10 +111,12 @@ if __name__ == '__main__':
                                 tts_input1 = gr.TextArea(label="Text (150 words limitation)", value="こんにちは。")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
+                                tts_input3 = gr.Slider(label="Speed", value=1, minimum=0.5, maximum=2, step=0.1)
                                 tts_submit = gr.Button("Generate", variant="primary")
                                 tts_output1 = gr.Textbox(label="Output Message")
                                 tts_output2 = gr.Audio(label="Output Audio")
-                                tts_submit.click(tts_fn, [tts_input1, tts_input2], [tts_output1, tts_output2])
+                                tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3],
+                                                 [tts_output1, tts_output2])
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
                     for i, (models_name, cover_path, speakers, tts_fn, vc_fn) in enumerate(models):
