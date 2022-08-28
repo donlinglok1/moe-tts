@@ -9,4 +9,5 @@ torch
 torchvision
 Unidecode
 pyopenjtalk
+psutil
 gradio
