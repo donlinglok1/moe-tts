@@ -1,11 +1,7 @@
 import json
-import signal
-import sys
-
 import librosa
 import numpy as np
 import torch
-from psutil import process_iter
 from torch import no_grad, LongTensor
 import commons
 import utils
@@ -76,18 +72,7 @@ def create_vc_fn(model, hps, speaker_ids):
     return vc_fn
 
 
-def kill_proc():
-    for proc in process_iter():
-        for conns in proc.connections(kind='inet'):
-            if conns.laddr.port == 7860:
-                proc.send_signal(signal.SIGTERM if sys.platform == "win32" else signal.SIGKILL)
-
-
 if __name__ == '__main__':
-    kill_proc()
-    # I don't know why my space will restart unexpectedly and get OSError: All ports from 7860 to 7860 are in use.
-    # So I try to kill the process which using 7860 port.
-
     models = []
     with open("saved_model/names.json", "r", encoding="utf-8") as f:
         models_names = json.load(f)
