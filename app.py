@@ -1,5 +1,6 @@
 import json
-from signal import SIGTERM
+import signal
+import sys
 
 import librosa
 import numpy as np
@@ -48,7 +49,7 @@ def create_vc_fn(model, hps, speaker_ids):
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
-        if limitation and duration > 20:
+        if limitation and duration > 15:
             return "Error: Audio is too long", None
         original_speaker_id = speaker_ids[original_speaker]
         target_speaker_id = speaker_ids[target_speaker]
@@ -79,7 +80,7 @@ def kill_proc():
     for proc in process_iter():
         for conns in proc.connections(kind='inet'):
             if conns.laddr.port == 7860:
-                proc.send_signal(SIGTERM)
+                proc.send_signal(signal.SIGTERM if sys.platform == "win32" else signal.SIGKILL)
 
 
 if __name__ == '__main__':
@@ -145,10 +146,10 @@ if __name__ == '__main__':
                                                     value=speakers[0])
                             vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[1])
-                            vc_input3 = gr.Audio(label="Input Audio (20s limitation)")
+                            vc_input3 = gr.Audio(label="Input Audio (15s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
     # app.launch()
-    app.queue(concurrency_count=1, client_position_to_load_data=10).launch()
+    app.queue(concurrency_count=1, client_position_to_load_data=10).launch(max_threads=10)
