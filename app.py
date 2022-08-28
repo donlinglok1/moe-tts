@@ -23,7 +23,7 @@ def get_text(text, hps):
 
 def create_tts_fn(model, hps, speaker_ids):
     def tts_fn(text, speaker, speed):
-        if limitation and len(text) > 150:
+        if limitation and len(text) > 60:
             return "Error: Text is too long", None
         speaker_id = speaker_ids[speaker]
         stn_tst = get_text(text, hps)
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                             with gr.Column():
                                 gr.Markdown(f"## {model_name}\n\n"
                                             f"![cover](file/{cover_path})")
-                                tts_input1 = gr.TextArea(label="Text (150 words limitation)", value="こんにちは。")
+                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value="こんにちは。")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
                                 tts_input3 = gr.Slider(label="Speed", value=1, minimum=0.5, maximum=2, step=0.1)
