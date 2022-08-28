@@ -83,6 +83,10 @@ def kill_proc():
 
 
 if __name__ == '__main__':
+    kill_proc()
+    # I don't know why my space will restart unexpectedly and get OSError: All ports from 7860 to 7860 are in use.
+    # So I try to kill the process which using 7860 port.
+
     models = []
     with open("saved_model/names.json", "r", encoding="utf-8") as f:
         models_names = json.load(f)
@@ -146,7 +150,5 @@ if __name__ == '__main__':
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
-
-    kill_proc()
     # app.launch()
-    app.queue(client_position_to_load_data=10).launch()
+    app.queue(concurrency_count=1, client_position_to_load_data=10).launch()
