@@ -136,5 +136,4 @@ if __name__ == '__main__':
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
-    # app.launch()
-    app.queue(concurrency_count=1, client_position_to_load_data=10).launch(max_threads=10)
+    app.launch(max_threads=10)
