@@ -1,7 +1,10 @@
 import json
+from signal import SIGTERM
+
 import librosa
 import numpy as np
 import torch
+from psutil import process_iter
 from torch import no_grad, LongTensor
 import commons
 import utils
@@ -72,6 +75,13 @@ def create_vc_fn(model, hps, speaker_ids):
     return vc_fn
 
 
+def kill_proc():
+    for proc in process_iter():
+        for conns in proc.connections(kind='inet'):
+            if conns.laddr.port == 7860:
+                proc.send_signal(SIGTERM)
+
+
 if __name__ == '__main__':
     models = []
     with open("saved_model/names.json", "r", encoding="utf-8") as f:
@@ -137,5 +147,6 @@ if __name__ == '__main__':
                             vc_output2 = gr.Audio(label="Output Audio")
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
 
+    kill_proc()
     # app.launch()
     app.queue(client_position_to_load_data=10).launch()
