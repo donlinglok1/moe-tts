@@ -10,6 +10,8 @@ from models import SynthesizerTrn
 from text import text_to_sequence
 from mel_processing import spectrogram_torch
 
+limitation = True  # limit text and audio length
+
 
 def get_text(text, hps):
     text_norm = text_to_sequence(text, hps.symbols, hps.data.text_cleaners)
@@ -21,7 +23,7 @@ def get_text(text, hps):
 
 def create_tts_fn(model, hps, speaker_ids):
     def tts_fn(text, speaker, speed):
-        if len(text) > 150:
+        if limitation and len(text) > 150:
             return "Error: Text is too long", None
         speaker_id = speaker_ids[speaker]
         stn_tst = get_text(text, hps)
@@ -31,6 +33,7 @@ def create_tts_fn(model, hps, speaker_ids):
             sid = LongTensor([speaker_id])
             audio = model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8,
                                 length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
+        del stn_tst, x_tst, x_tst_lengths, sid
         return "Success", (hps.data.sampling_rate, audio)
 
     return tts_fn
@@ -42,7 +45,7 @@ def create_vc_fn(model, hps, speaker_ids):
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
-        if duration > 30:
+        if limitation and duration > 20:
             return "Error: Audio is too long", None
         original_speaker_id = speaker_ids[original_speaker]
         target_speaker_id = speaker_ids[target_speaker]
@@ -52,17 +55,18 @@ def create_vc_fn(model, hps, speaker_ids):
             audio = librosa.to_mono(audio.transpose(1, 0))
         if sampling_rate != hps.data.sampling_rate:
             audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=hps.data.sampling_rate)
-        y = torch.FloatTensor(audio)
-        y = y.unsqueeze(0)
-        spec = spectrogram_torch(y, hps.data.filter_length,
-                                 hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
-                                 center=False)
-        spec_lengths = LongTensor([spec.size(-1)])
-        sid_src = LongTensor([original_speaker_id])
-        sid_tgt = LongTensor([target_speaker_id])
         with no_grad():
+            y = torch.FloatTensor(audio)
+            y = y.unsqueeze(0)
+            spec = spectrogram_torch(y, hps.data.filter_length,
+                                     hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
+                                     center=False)
+            spec_lengths = LongTensor([spec.size(-1)])
+            sid_src = LongTensor([original_speaker_id])
+            sid_tgt = LongTensor([target_speaker_id])
             audio = model.voice_conversion(spec, spec_lengths, sid_src=sid_src, sid_tgt=sid_tgt)[0][
                 0, 0].data.cpu().float().numpy()
+        del y, spec, spec_lengths, sid_src, sid_tgt
         return "Success", (hps.data.sampling_rate, audio)
 
     return vc_fn
@@ -103,10 +107,10 @@ if __name__ == '__main__':
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
-                    for i, (models_name, cover_path, speakers, tts_fn, vc_fn) in enumerate(models):
+                    for i, (model_name, cover_path, speakers, tts_fn, vc_fn) in enumerate(models):
                         with gr.TabItem(f"model{i}"):
                             with gr.Column():
-                                gr.Markdown(f"## {models_name}\n\n"
+                                gr.Markdown(f"## {model_name}\n\n"
                                             f"![cover](file/{cover_path})")
                                 tts_input1 = gr.TextArea(label="Text (150 words limitation)", value="こんにちは。")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
@@ -119,18 +123,19 @@ if __name__ == '__main__':
                                                  [tts_output1, tts_output2])
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
-                    for i, (models_name, cover_path, speakers, tts_fn, vc_fn) in enumerate(models):
+                    for i, (model_name, cover_path, speakers, tts_fn, vc_fn) in enumerate(models):
                         with gr.TabItem(f"model{i}"):
-                            gr.Markdown(f"## {models_name}\n\n"
+                            gr.Markdown(f"## {model_name}\n\n"
                                         f"![cover](file/{cover_path})")
                             vc_input1 = gr.Dropdown(label="Original Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
                             vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[1])
-                            vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
+                            vc_input3 = gr.Audio(label="Input Audio (20s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
 
-    app.launch()
+    # app.launch()
+    app.queue(client_position_to_load_data=10).launch()
