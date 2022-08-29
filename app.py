@@ -1,6 +1,7 @@
 import json
 import os
 import psutil
+import time
 from threading import Timer
 import librosa
 import numpy as np
@@ -89,13 +90,26 @@ def system_monitor():
                 return f"{bs:.2f}{unit}{suffix}"
             bs /= factor
 
+    def read_int(path):
+        with open(path, "r") as f:
+            return int(f.read())
+
     def print_sys_status():
-        svmem = psutil.virtual_memory()
-        swap = psutil.swap_memory()
-        print("=" * 10, "CPU & Mem Information", "=" * 10)
-        print(f"CPU: {psutil.cpu_percent()}%, "
-              f"Mem: {svmem.percent}%({get_size(svmem.total)}), "
-              f"SWAP: {swap.percent}%({get_size(swap.total)})")
+        try:
+            cpu_t1 = read_int("/sys/fs/cgroup/cpu/cpuacct.usage")
+            t1 = time.time() * 1000000000
+            time.sleep(1)
+            cpu_t2 = read_int("/sys/fs/cgroup/cpu/cpuacct.usage")
+            t2 = time.time() * 1000000000
+            cpu_percent = (cpu_t2 - cpu_t1) / (t2 - t1) * 100
+            mem_total = get_size(read_int("/sys/fs/cgroup/memory/memory.limit_in_bytes"))
+            mem_usage = get_size(read_int("/sys/fs/cgroup/memory/memory.usage_in_bytes"))
+            print("=" * 10, "CPU & Mem Information", "=" * 10)
+            print(f"CPU: {cpu_percent}%, "
+                  f"Mem: {mem_usage}/{mem_total}")
+        except FileNotFoundError:
+            pass
+
         print("=" * 10, "Disk Information", "=" * 10)
         # get all disk partitions
         partitions = psutil.disk_partitions()
@@ -108,6 +122,7 @@ def system_monitor():
                 continue
             disk_info += f"{partition_usage.percent}%({get_size(partition_usage.total)}), "
         print(disk_info)
+
         tr = Timer(60, print_sys_status)
         tr.start()
 
@@ -133,7 +148,8 @@ css = """
 """
 
 if __name__ == '__main__':
-    system_monitor()  # debug
+    if os.getenv("SYSTEM") == "spaces":
+        system_monitor()  # debug
     models = []
     with open("saved_model/names.json", "r", encoding="utf-8") as f:
         models_names = json.load(f)
