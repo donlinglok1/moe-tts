@@ -149,7 +149,7 @@ if __name__ == '__main__':
                                 advanced_button.click(None, [], [],
                                                       _js="""
                                                         () => {
-                                                            const options = document.querySelector("body > gradio-app").shadowRoot.querySelector("#advanced-options");
+                                                            const options = document.querySelector("body > gradio-app").querySelector("#advanced-options");
                                                             options.style.display = ["none", ""].includes(options.style.display) ? "flex" : "none";
                                                         }""")
                                 tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, phoneme_input],
