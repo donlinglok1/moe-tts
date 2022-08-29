@@ -1,5 +1,7 @@
 import json
 import os
+import psutil
+from threading import Timer
 import librosa
 import numpy as np
 import torch
@@ -73,6 +75,45 @@ def create_vc_fn(model, hps, speaker_ids):
     return vc_fn
 
 
+def system_monitor():
+    def get_size(bs, suffix="B"):
+        """
+        Scale bytes to its proper format
+        e.g:
+            1253656 => '1.20MB'
+            1253656678 => '1.17GB'
+        """
+        factor = 1024
+        for unit in ["", "K", "M", "G", "T", "P"]:
+            if bs < factor:
+                return f"{bs:.2f}{unit}{suffix}"
+            bs /= factor
+
+    def print_sys_status():
+        svmem = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        print("=" * 10, "CPU & Mem Information", "=" * 10)
+        print(f"CPU: {psutil.cpu_percent()}%, "
+              f"Mem: {svmem.percent}%({get_size(svmem.total)}), "
+              f"SWAP: {swap.percent}%({get_size(swap.total)})")
+        print("=" * 10, "Disk Information", "=" * 10)
+        # get all disk partitions
+        partitions = psutil.disk_partitions()
+        disk_info = ""
+        for partition in partitions:
+            disk_info += f"{partition.mountpoint}: "
+            try:
+                partition_usage = psutil.disk_usage(partition.mountpoint)
+            except PermissionError:
+                continue
+            disk_info += f"{partition_usage.percent}%({get_size(partition_usage.total)}), "
+        print(disk_info)
+        tr = Timer(60, print_sys_status)
+        tr.start()
+
+    print_sys_status()
+
+
 css = """
         #advanced-btn {
             color: white;
@@ -92,6 +133,7 @@ css = """
 """
 
 if __name__ == '__main__':
+    system_monitor()  # debug
     models = []
     with open("saved_model/names.json", "r", encoding="utf-8") as f:
         models_names = json.load(f)
