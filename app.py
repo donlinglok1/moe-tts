@@ -1,8 +1,5 @@
 import json
 import os
-import psutil
-import time
-from threading import Timer
 import librosa
 import numpy as np
 import torch
@@ -28,7 +25,7 @@ def get_text(text, hps, is_phoneme):
 def create_tts_fn(model, hps, speaker_ids):
     def tts_fn(text, speaker, speed, is_phoneme):
         if limitation and ((len(text) > 60 and not is_phoneme) or (len(text) > 120 and is_phoneme)):
-            return "Error: Text is too long", None
+            raise gr.Error("Text is too long")
         speaker_id = speaker_ids[speaker]
         stn_tst = get_text(text, hps, is_phoneme)
         with no_grad():
@@ -38,7 +35,7 @@ def create_tts_fn(model, hps, speaker_ids):
             audio = model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8,
                                 length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
         del stn_tst, x_tst, x_tst_lengths, sid
-        return "Success", (hps.data.sampling_rate, audio)
+        return hps.data.sampling_rate, audio
 
     return tts_fn
 
@@ -46,11 +43,11 @@ def create_tts_fn(model, hps, speaker_ids):
 def create_vc_fn(model, hps, speaker_ids):
     def vc_fn(original_speaker, target_speaker, input_audio):
         if input_audio is None:
-            return "You need to upload an audio", None
+            raise gr.Error("You need to upload an audio")
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
         if limitation and duration > 15:
-            return "Error: Audio is too long", None
+            raise gr.Error("Audio is too long")
         original_speaker_id = speaker_ids[original_speaker]
         target_speaker_id = speaker_ids[target_speaker]
 
@@ -71,7 +68,7 @@ def create_vc_fn(model, hps, speaker_ids):
             audio = model.voice_conversion(spec, spec_lengths, sid_src=sid_src, sid_tgt=sid_tgt)[0][
                 0, 0].data.cpu().float().numpy()
         del y, spec, spec_lengths, sid_src, sid_tgt
-        return "Success", (hps.data.sampling_rate, audio)
+        return hps.data.sampling_rate, audio
 
     return vc_fn
 
@@ -144,21 +141,25 @@ if __name__ == '__main__':
                                 with advanced_options:
                                     phoneme_input = gr.Checkbox(value=False, label="Phoneme input")
                                     to_phoneme_btn = gr.Button("Covert text to phoneme")
-                                    phoneme_list = gr.Json(label="Phoneme list", value=symbols, elem_id="phoneme_list")
-
+                                    phoneme_list = gr.Dataset(label="Phoneme list", components=[tts_input1],
+                                                              samples=[[x] for x in symbols])
+                                    phoneme_list_json = gr.Json(value=symbols, visible=False)
                                 tts_submit = gr.Button("Generate", variant="primary")
-                                tts_output1 = gr.Textbox(label="Output Message")
-                                tts_output2 = gr.Audio(label="Output Audio")
-                                advanced_button.click(None, [], [],
-                                                      _js="""
-                                                        () => {
-                                                            const options = document.querySelector("body > gradio-app").querySelector("#advanced-options");
-                                                            options.style.display = ["none", ""].includes(options.style.display) ? "flex" : "none";
-                                                        }""")
+                                tts_output = gr.Audio(label="Output Audio")
+                                advanced_button.click(None, [], [], _js="""
+                                () => {
+                                    let options = document.querySelector("body > gradio-app");
+                                    if (options.shadowRoot != null)
+                                        options = options.shadowRoot;
+                                    options = options.querySelector("#advanced-options");
+                                    options.style.display = ["none", ""].includes(options.style.display) ? "flex" : "none";
+                                }""")
                                 tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, phoneme_input],
-                                                 [tts_output1, tts_output2])
+                                                 [tts_output])
                                 to_phoneme_btn.click(lambda x: _clean_text(x, hps.data.text_cleaners) if x != "" else x,
                                                      [tts_input1], [tts_input1])
+                                phoneme_list.click(None, [phoneme_list, phoneme_list_json, tts_input1], [tts_input1],
+                                                   _js="(i,phonemes, text) => text + phonemes[i]")
 
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
@@ -172,7 +173,6 @@ if __name__ == '__main__':
                                                     value=speakers[1])
                             vc_input3 = gr.Audio(label="Input Audio (15s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
-                            vc_output1 = gr.Textbox(label="Output Message")
-                            vc_output2 = gr.Audio(label="Output Audio")
-                            vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
+                            vc_output = gr.Audio(label="Output Audio")
+                            vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output])
     app.launch()
