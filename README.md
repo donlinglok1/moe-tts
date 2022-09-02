@@ -1,5 +1,5 @@
 ---
-title: Moe Japanese TTS
+title: Moe TTS
 emoji: 😊🎙️
 colorFrom: red
 colorTo: pink

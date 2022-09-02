@@ -22,7 +22,6 @@ from jamo import h2j, j2hcj
 from pypinyin import lazy_pinyin, BOPOMOFO
 from unidecode import unidecode
 
-jieba.set_dictionary(os.path.dirname(sys.argv[0]) + '/text/jieba_dict.txt')
 jieba.initialize()
 pyopenjtalk._lazy_init()
 

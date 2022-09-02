@@ -127,7 +127,7 @@ if __name__ == '__main__':
     app = gr.Blocks(css=css)
 
     with app:
-        gr.Markdown("# Moe Japanese TTS And Voice Conversion Using VITS Model\n\n"
+        gr.Markdown("# Moe TTS And Voice Conversion Using VITS Model\n\n"
                     "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n"
                     "unofficial demo for \n\n"
                     "- [https://github.com/CjangCjengh/MoeGoe](https://github.com/CjangCjengh/MoeGoe)\n"
