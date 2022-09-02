@@ -9,4 +9,8 @@ torch
 torchvision
 Unidecode
 pyopenjtalk
+jamo
+pypinyin
+jieba
+cn2an
 gradio

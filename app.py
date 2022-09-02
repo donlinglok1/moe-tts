@@ -73,6 +73,12 @@ def create_vc_fn(model, hps, speaker_ids):
     return vc_fn
 
 
+def create_to_phoneme_fn(hps):
+    def to_phoneme_fn(text):
+        return _clean_text(text, hps.data.text_cleaners) if text != "" else ""
+    return to_phoneme_fn
+
+
 css = """
         #advanced-btn {
             color: white;
@@ -93,9 +99,12 @@ css = """
 
 if __name__ == '__main__':
     models = []
-    with open("saved_model/names.json", "r", encoding="utf-8") as f:
-        models_names = json.load(f)
-    for i, models_name in models_names.items():
+    with open("saved_model/info.json", "r", encoding="utf-8") as f:
+        models_info = json.load(f)
+    for i, info in models_info.items():
+        name = info["title"]
+        lang = info["lang"]
+        example = info["example"]
         config_path = f"saved_model/{i}/config.json"
         model_path = f"saved_model/{i}/model.pth"
         cover_path = f"saved_model/{i}/cover.jpg"
@@ -111,8 +120,9 @@ if __name__ == '__main__':
         speaker_ids = [sid for sid, name in enumerate(hps.speakers) if name != "None"]
         speakers = [name for sid, name in enumerate(hps.speakers) if name != "None"]
 
-        models.append((models_name, cover_path, speakers, hps.symbols,
-                       create_tts_fn(model, hps, speaker_ids), create_vc_fn(model, hps, speaker_ids)))
+        models.append((name, lang, example, cover_path, speakers, hps.symbols,
+                       create_tts_fn(model, hps, speaker_ids), create_vc_fn(model, hps, speaker_ids),
+                       create_to_phoneme_fn(hps)))
 
     app = gr.Blocks(css=css)
 
@@ -126,12 +136,14 @@ if __name__ == '__main__':
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
-                    for i, (model_name, cover_path, speakers, symbols, tts_fn, vc_fn) in enumerate(models):
+                    for i, (name, lang, example, cover_path, speakers,
+                            symbols, tts_fn, vc_fn, to_phoneme_fn) in enumerate(models):
                         with gr.TabItem(f"model{i}"):
                             with gr.Column():
-                                gr.Markdown(f"## {model_name}\n\n"
-                                            f"![cover](file/{cover_path})")
-                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value="こんにちは。")
+                                gr.Markdown(f"## {name}\n\n"
+                                            f"![cover](file/{cover_path})\n\n"
+                                            f"lang: {lang}")
+                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value=example)
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
                                 tts_input3 = gr.Slider(label="Speed", value=1, minimum=0.5, maximum=2, step=0.1)
@@ -157,16 +169,16 @@ if __name__ == '__main__':
                                 }""")
                                 tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, phoneme_input],
                                                  [tts_output1, tts_output2])
-                                to_phoneme_btn.click(lambda x: _clean_text(x, hps.data.text_cleaners) if x != "" else x,
-                                                     [tts_input1], [tts_input1])
+                                to_phoneme_btn.click(to_phoneme_fn, [tts_input1], [tts_input1])
                                 phoneme_list.click(None, [phoneme_list, phoneme_list_json, tts_input1], [tts_input1],
                                                    _js="(i,phonemes, text) => text + phonemes[i]")
 
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
-                    for i, (model_name, cover_path, speakers, symbols, tts_fn, vc_fn) in enumerate(models):
+                    for i, (name, lang, example, cover_path, speakers,
+                            symbols, tts_fn, vc_fn, to_phoneme_fn) in enumerate(models):
                         with gr.TabItem(f"model{i}"):
-                            gr.Markdown(f"## {model_name}\n\n"
+                            gr.Markdown(f"## {name}\n\n"
                                         f"![cover](file/{cover_path})")
                             vc_input1 = gr.Dropdown(label="Original Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
