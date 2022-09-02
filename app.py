@@ -1,5 +1,7 @@
 import json
 import os
+import re
+
 import librosa
 import numpy as np
 import torch
@@ -24,8 +26,17 @@ def get_text(text, hps, is_phoneme):
 
 def create_tts_fn(model, hps, speaker_ids):
     def tts_fn(text, speaker, speed, is_phoneme):
-        if limitation and ((len(text) > 60 and not is_phoneme) or (len(text) > 120 and is_phoneme)):
-            return "Error: Text is too long", None
+        if limitation:
+            text_len = len(text)
+            max_len = 60
+            if is_phoneme:
+                max_len *= 3
+            else:
+                if len(hps.data.text_cleaners) > 0 and hps.data.text_cleaners[0] == "zh_ja_mixture_cleaners":
+                    text_len = len(re.sub("(\[ZH\]|\[JA\])", "", text))
+            if text_len > max_len:
+                return "Error: Text is too long", None
+
         speaker_id = speaker_ids[speaker]
         stn_tst = get_text(text, hps, is_phoneme)
         with no_grad():
@@ -76,6 +87,7 @@ def create_vc_fn(model, hps, speaker_ids):
 def create_to_phoneme_fn(hps):
     def to_phoneme_fn(text):
         return _clean_text(text, hps.data.text_cleaners) if text != "" else ""
+
     return to_phoneme_fn
 
 

@@ -29,5 +29,4 @@ def _clean_text(text, cleaner_names):
         if not cleaner:
             raise Exception('Unknown cleaner: %s' % name)
         text = cleaner(text)
-    print(text, cleaner_names)
     return text
