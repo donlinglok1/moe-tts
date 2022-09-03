@@ -441,7 +441,7 @@ def transliteration_cleaners(text):
 
 def japanese_cleaners(text):
     text = japanese_to_romaji_with_accent(text)
-    if re.match('[A-Za-z]', text[-1]):
+    if len(text) > 0 and re.match('[A-Za-z]', text[-1]):
         text += '.'
     return text
 
@@ -456,7 +456,7 @@ def korean_cleaners(text):
     text = number_to_hangul(text)
     text = j2hcj(h2j(text))
     text = divide_hangul(text)
-    if re.match('[\u3131-\u3163]', text[-1]):
+    if len(text) > 0 and re.match('[\u3131-\u3163]', text[-1]):
         text += '.'
     return text
 
@@ -466,7 +466,7 @@ def chinese_cleaners(text):
     text = number_to_chinese(text)
     text = chinese_to_bopomofo(text)
     text = latin_to_bopomofo(text)
-    if re.match('[ˉˊˇˋ˙]', text[-1]):
+    if  re.match('[ˉˊˇˋ˙]', text[-1]):
         text += '。'
     return text
 
@@ -490,6 +490,6 @@ def zh_ja_mixture_cleaners(text):
             '...', '…')
         text = text.replace(japanese_text, cleaned_text + ' ', 1)
     text = text[:-1]
-    if re.match('[A-Za-zɯɹəɥ→↓↑]', text[-1]):
+    if len(text) > 0 and re.match('[A-Za-zɯɹəɥ→↓↑]', text[-1]):
         text += '.'
     return text
