@@ -466,7 +466,7 @@ def chinese_cleaners(text):
     text = number_to_chinese(text)
     text = chinese_to_bopomofo(text)
     text = latin_to_bopomofo(text)
-    if  re.match('[ˉˊˇˋ˙]', text[-1]):
+    if len(text) > 0 and re.match('[ˉˊˇˋ˙]', text[-1]):
         text += '。'
     return text
 

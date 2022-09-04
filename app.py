@@ -155,7 +155,8 @@ if __name__ == '__main__':
                                 gr.Markdown(f"## {name}\n\n"
                                             f"![cover](file/{cover_path})\n\n"
                                             f"lang: {lang}")
-                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value=example)
+                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value=example,
+                                                         elem_id="tts-input")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
                                 tts_input3 = gr.Slider(label="Speed", value=1, minimum=0.5, maximum=2, step=0.1)
@@ -182,8 +183,23 @@ if __name__ == '__main__':
                                 tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, phoneme_input],
                                                  [tts_output1, tts_output2])
                                 to_phoneme_btn.click(to_phoneme_fn, [tts_input1], [tts_input1])
-                                phoneme_list.click(None, [phoneme_list, phoneme_list_json, tts_input1], [tts_input1],
-                                                   _js="(i,phonemes, text) => text + phonemes[i]")
+                                phoneme_list.click(None, [phoneme_list, phoneme_list_json], [],
+                                                   _js="""
+                                (i,phonemes) => {
+                                    let text_input = document.querySelector("body > gradio-app");
+                                    if (text_input.shadowRoot != null)
+                                        text_input = text_input.shadowRoot;
+                                    text_input = text_input.querySelector("#tts-input").querySelector("textarea");
+                                    let startPos = text_input.selectionStart;
+                                    let endPos = text_input.selectionEnd;
+                                    let oldTxt = text_input.value;
+                                    let result = oldTxt.substring(0, startPos) + phonemes[i] + oldTxt.substring(endPos);
+                                    text_input.value = result;
+                                    text_input.focus()
+                                    text_input.selectionStart = startPos + phonemes[i].length;
+                                    text_input.selectionEnd = startPos + phonemes[i].length;
+                                    text_input.blur()
+                                }""")
 
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
