@@ -143,7 +143,8 @@ if __name__ == '__main__':
                     "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n"
                     "unofficial demo for \n\n"
                     "- [https://github.com/CjangCjengh/MoeGoe](https://github.com/CjangCjengh/MoeGoe)\n"
-                    "- [https://github.com/Francis-Komizu/VITS](https://github.com/Francis-Komizu/VITS)"
+                    "- [https://github.com/Francis-Komizu/VITS](https://github.com/Francis-Komizu/VITS)\n"
+                    "- [https://github.com/luoyily/MoeTTS](https://github.com/luoyily/MoeTTS)"
                     )
         with gr.Tabs():
             with gr.TabItem("TTS"):
