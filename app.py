@@ -85,7 +85,10 @@ def create_vc_fn(model, hps, speaker_ids):
 
 
 def create_soft_vc_fn(model, hps, speaker_ids):
-    def soft_vc_fn(target_speaker, input_audio):
+    def soft_vc_fn(target_speaker, input_audio1, input_audio2):
+        input_audio = input_audio1
+        if input_audio is None:
+            input_audio = input_audio2
         if input_audio is None:
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
@@ -257,15 +260,24 @@ if __name__ == '__main__':
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
             with gr.TabItem("Soft Voice Conversion"):
                 with gr.Tabs():
-                    for i, (name, cover_path, speakers,soft_vc_fn) in enumerate(models_soft_vc):
+                    for i, (name, cover_path, speakers, soft_vc_fn) in enumerate(models_soft_vc):
                         with gr.TabItem(f"model{i}"):
                             gr.Markdown(f"## {name}\n\n"
                                         f"![cover](file/{cover_path})")
                             vc_input1 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
-                            vc_input2 = gr.Audio(label="Input Audio (15s limitation)")
+                            source_tabs = gr.Tabs()
+                            with source_tabs:
+                                with gr.TabItem("microphone"):
+                                    vc_input2 = gr.Audio(label="Input Audio (15s limitation)", source="microphone")
+                                with gr.TabItem("upload"):
+                                    vc_input3 = gr.Audio(label="Input Audio (15s limitation)", source="upload")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
-                            vc_submit.click(soft_vc_fn, [vc_input1, vc_input2], [vc_output1, vc_output2])
+                            # clear inputs
+                            source_tabs.set_event_trigger("change", None, [], [vc_input2, vc_input3],
+                                                          js="()=>[null,null]")
+                            vc_submit.click(soft_vc_fn, [vc_input1, vc_input2, vc_input3],
+                                            [vc_output1, vc_output2])
     app.launch()
