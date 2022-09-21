@@ -12,6 +12,7 @@ Unidecode
 pyopenjtalk
 jamo
 pypinyin
+ko_pron
 jieba
 cn2an
 gradio
