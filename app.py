@@ -280,4 +280,4 @@ if __name__ == '__main__':
                                                           js="()=>[null,null]")
                             vc_submit.click(soft_vc_fn, [vc_input1, vc_input2, vc_input3],
                                             [vc_output1, vc_output2])
-    app.queue(concurrency_count=3).launch()
+    app.queue(concurrency_count=3).launch(show_api=False)
