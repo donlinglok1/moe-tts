@@ -180,13 +180,7 @@ if __name__ == '__main__':
 
     with app:
         gr.Markdown("# Moe TTS And Voice Conversion Using VITS Model\n\n"
-                    "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n"
-                    "unofficial demo for \n\n"
-                    "- [https://github.com/CjangCjengh/MoeGoe](https://github.com/CjangCjengh/MoeGoe)\n"
-                    "- [https://github.com/Francis-Komizu/VITS](https://github.com/Francis-Komizu/VITS)\n"
-                    "- [https://github.com/luoyily/MoeTTS](https://github.com/luoyily/MoeTTS)\n"
-                    "- [https://github.com/Francis-Komizu/Sovits](https://github.com/Francis-Komizu/Sovits)"
-                    )
+                    "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n")
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
@@ -206,7 +200,8 @@ if __name__ == '__main__':
                                     phoneme_input = gr.Checkbox(value=False, label="Phoneme input")
                                     to_phoneme_btn = gr.Button("Covert text to phoneme")
                                     phoneme_list = gr.Dataset(label="Phoneme list", components=[tts_input1],
-                                                              samples=[[x] for x in symbols])
+                                                              samples=[[x] for x in symbols],
+                                                              elem_id=f"phoneme-list{i}")
                                     phoneme_list_json = gr.Json(value=symbols, visible=False)
                                 tts_submit = gr.Button("Generate", variant="primary")
                                 tts_output1 = gr.Textbox(label="Output Message")
@@ -217,19 +212,22 @@ if __name__ == '__main__':
                                 phoneme_list.click(None, [phoneme_list, phoneme_list_json], [],
                                                    _js=f"""
                                 (i,phonemes) => {{
-                                    let text_input = document.querySelector("body > gradio-app");
-                                    if (text_input.shadowRoot != null)
-                                        text_input = text_input.shadowRoot;
-                                    text_input = text_input.querySelector("#tts-input{i}").querySelector("textarea");
+                                    let root = document.querySelector("body > gradio-app");
+                                    if (root.shadowRoot != null)
+                                        root = root.shadowRoot;
+                                    let text_input = root.querySelector("#tts-input{i}").querySelector("textarea");
                                     let startPos = text_input.selectionStart;
                                     let endPos = text_input.selectionEnd;
                                     let oldTxt = text_input.value;
                                     let result = oldTxt.substring(0, startPos) + phonemes[i] + oldTxt.substring(endPos);
                                     text_input.value = result;
-                                    text_input.focus()
+                                    let x = window.scrollX, y = window.scrollY;
+                                    text_input.focus();
                                     text_input.selectionStart = startPos + phonemes[i].length;
                                     text_input.selectionEnd = startPos + phonemes[i].length;
-                                    text_input.blur()
+                                    text_input.blur();
+                                    window.scrollTo(x, y);
+                                    return [];
                                 }}""")
 
             with gr.TabItem("Voice Conversion"):
@@ -269,4 +267,11 @@ if __name__ == '__main__':
                                                           js="()=>[null,null]")
                             vc_submit.click(soft_vc_fn, [vc_input1, vc_input2, vc_input3],
                                             [vc_output1, vc_output2])
+        gr.Markdown(
+            "unofficial demo for \n\n"
+            "- [https://github.com/CjangCjengh/MoeGoe](https://github.com/CjangCjengh/MoeGoe)\n"
+            "- [https://github.com/Francis-Komizu/VITS](https://github.com/Francis-Komizu/VITS)\n"
+            "- [https://github.com/luoyily/MoeTTS](https://github.com/luoyily/MoeTTS)\n"
+            "- [https://github.com/Francis-Komizu/Sovits](https://github.com/Francis-Komizu/Sovits)"
+        )
     app.queue(concurrency_count=3).launch(show_api=False)
