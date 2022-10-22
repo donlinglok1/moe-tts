@@ -28,7 +28,7 @@ def create_tts_fn(model, hps, speaker_ids):
     def tts_fn(text, speaker, speed, is_phoneme):
         if limitation:
             text_len = len(text)
-            max_len = 60
+            max_len = 120
             if is_phoneme:
                 max_len *= 3
             else:
@@ -57,7 +57,7 @@ def create_vc_fn(model, hps, speaker_ids):
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
-        if limitation and duration > 15:
+        if limitation and duration > 30:
             return "Error: Audio is too long", None
         original_speaker_id = speaker_ids[original_speaker]
         target_speaker_id = speaker_ids[target_speaker]
@@ -93,7 +93,7 @@ def create_soft_vc_fn(model, hps, speaker_ids):
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
-        if limitation and duration > 15:
+        if limitation and duration > 30:
             return "Error: Audio is too long", None
         target_speaker_id = speaker_ids[target_speaker]
 
@@ -191,7 +191,7 @@ if __name__ == '__main__':
                                 gr.Markdown(f"## {name}\n\n"
                                             f"![cover](file/{cover_path})\n\n"
                                             f"lang: {lang}")
-                                tts_input1 = gr.TextArea(label="Text (60 words limitation)", value=example,
+                                tts_input1 = gr.TextArea(label="Text (120 words limitation)", value=example,
                                                          elem_id=f"tts-input{i}")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
@@ -240,7 +240,7 @@ if __name__ == '__main__':
                                                     value=speakers[0])
                             vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[1])
-                            vc_input3 = gr.Audio(label="Input Audio (15s limitation)")
+                            vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
@@ -256,9 +256,9 @@ if __name__ == '__main__':
                             source_tabs = gr.Tabs()
                             with source_tabs:
                                 with gr.TabItem("microphone"):
-                                    vc_input2 = gr.Audio(label="Input Audio (15s limitation)", source="microphone")
+                                    vc_input2 = gr.Audio(label="Input Audio (30s limitation)", source="microphone")
                                 with gr.TabItem("upload"):
-                                    vc_input3 = gr.Audio(label="Input Audio (15s limitation)", source="upload")
+                                    vc_input3 = gr.Audio(label="Input Audio (30s limitation)", source="upload")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
