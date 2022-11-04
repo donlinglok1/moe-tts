@@ -152,7 +152,8 @@ if __name__ == '__main__':
         example = info["example"]
         config_path = f"saved_model/{i}/config.json"
         model_path = f"saved_model/{i}/model.pth"
-        cover_path = f"saved_model/{i}/cover.jpg"
+        cover = info["cover"]
+        cover_path = f"saved_model/{i}/{cover}" if cover else None
         hps = utils.get_hparams_from_file(config_path)
         model = SynthesizerTrn(
             len(hps.symbols),
@@ -188,8 +189,9 @@ if __name__ == '__main__':
                             to_phoneme_fn) in enumerate(models_tts):
                         with gr.TabItem(f"model{i}"):
                             with gr.Column():
+                                cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                                 gr.Markdown(f"## {name}\n\n"
-                                            f"![cover](file/{cover_path})\n\n"
+                                            f"{cover_markdown}"
                                             f"lang: {lang}")
                                 tts_input1 = gr.TextArea(label="Text (120 words limitation)", value=example,
                                                          elem_id=f"tts-input{i}")
@@ -234,12 +236,13 @@ if __name__ == '__main__':
                 with gr.Tabs():
                     for i, (name, cover_path, speakers, vc_fn) in enumerate(models_vc):
                         with gr.TabItem(f"model{i}"):
+                            cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                             gr.Markdown(f"## {name}\n\n"
-                                        f"![cover](file/{cover_path})")
+                                        f"{cover_markdown}")
                             vc_input1 = gr.Dropdown(label="Original Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
                             vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
-                                                    value=speakers[1])
+                                                    value=speakers[min(len(speakers) - 1, 1)])
                             vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
@@ -249,8 +252,9 @@ if __name__ == '__main__':
                 with gr.Tabs():
                     for i, (name, cover_path, speakers, soft_vc_fn) in enumerate(models_soft_vc):
                         with gr.TabItem(f"model{i}"):
+                            cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                             gr.Markdown(f"## {name}\n\n"
-                                        f"![cover](file/{cover_path})")
+                                        f"{cover_markdown}")
                             vc_input1 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
                             source_tabs = gr.Tabs()
