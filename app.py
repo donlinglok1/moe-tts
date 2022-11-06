@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+import tempfile
 
 import librosa
 import numpy as np
@@ -10,11 +11,34 @@ from torch import no_grad, LongTensor
 import commons
 import utils
 import gradio as gr
+import gradio.utils as gr_utils
+import gradio.processing_utils as gr_processing_utils
 from models import SynthesizerTrn
 from text import text_to_sequence, _clean_text
 from mel_processing import spectrogram_torch
 
 limitation = os.getenv("SYSTEM") == "spaces"  # limit text and audio length in huggingface spaces
+
+
+def audio_postprocess(self, y):
+    if y is None:
+        return None
+
+    if gr_utils.validate_url(y):
+        file = gr_processing_utils.download_to_file(y, dir=self.temp_dir)
+    elif isinstance(y, tuple):
+        sample_rate, data = y
+        file = tempfile.NamedTemporaryFile(
+            suffix=".wav", dir=self.temp_dir, delete=False
+        )
+        gr_processing_utils.audio_to_file(sample_rate, data, file.name)
+    else:
+        file = gr_processing_utils.create_tmp_copy_of_file(y, dir=self.temp_dir)
+
+    return gr_processing_utils.encode_url_or_file_to_base64(file.name)
+
+
+gr.Audio.postprocess = audio_postprocess
 
 
 def get_text(text, hps, is_symbol):
