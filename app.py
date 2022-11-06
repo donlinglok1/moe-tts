@@ -145,24 +145,6 @@ def create_to_symbol_fn(hps):
     return to_symbol_fn
 
 
-css = """
-        #advanced-btn {
-            color: white;
-            border-color: black;
-            background: black;
-            font-size: .7rem !important;
-            line-height: 19px;
-            margin-top: 24px;
-            margin-bottom: 12px;
-            padding: 2px 8px;
-            border-radius: 14px !important;
-        }
-        #advanced-options {
-            display: none;
-            margin-bottom: 20px;
-        }
-"""
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
@@ -204,7 +186,7 @@ if __name__ == '__main__':
 
     hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True)
 
-    app = gr.Blocks(css=css)
+    app = gr.Blocks()
 
     with app:
         gr.Markdown("# Moe TTS And Voice Conversion Using VITS Model\n\n"
