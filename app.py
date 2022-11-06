@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import re
@@ -16,8 +17,8 @@ from mel_processing import spectrogram_torch
 limitation = os.getenv("SYSTEM") == "spaces"  # limit text and audio length in huggingface spaces
 
 
-def get_text(text, hps, is_phoneme):
-    text_norm = text_to_sequence(text, hps.symbols, [] if is_phoneme else hps.data.text_cleaners)
+def get_text(text, hps, is_symbol):
+    text_norm = text_to_sequence(text, hps.symbols, [] if is_symbol else hps.data.text_cleaners)
     if hps.data.add_blank:
         text_norm = commons.intersperse(text_norm, 0)
     text_norm = LongTensor(text_norm)
@@ -25,20 +26,17 @@ def get_text(text, hps, is_phoneme):
 
 
 def create_tts_fn(model, hps, speaker_ids):
-    def tts_fn(text, speaker, speed, is_phoneme):
+    def tts_fn(text, speaker, speed, is_symbol):
         if limitation:
-            text_len = len(text)
-            max_len = 120
-            if is_phoneme:
+            text_len = len(re.sub("\[([A-Z]{2})\]", "", text))
+            max_len = 150
+            if is_symbol:
                 max_len *= 3
-            else:
-                if len(hps.data.text_cleaners) > 0 and hps.data.text_cleaners[0] == "zh_ja_mixture_cleaners":
-                    text_len = len(re.sub("(\[ZH\]|\[JA\])", "", text))
             if text_len > max_len:
                 return "Error: Text is too long", None
 
         speaker_id = speaker_ids[speaker]
-        stn_tst = get_text(text, hps, is_phoneme)
+        stn_tst = get_text(text, hps, is_symbol)
         with no_grad():
             x_tst = stn_tst.unsqueeze(0)
             x_tst_lengths = LongTensor([stn_tst.size(0)])
@@ -115,11 +113,12 @@ def create_soft_vc_fn(model, hps, speaker_ids):
     return soft_vc_fn
 
 
-def create_to_phoneme_fn(hps):
-    def to_phoneme_fn(text):
-        return _clean_text(text, hps.data.text_cleaners) if text != "" else ""
+def create_to_symbol_fn(hps):
+    def to_symbol_fn(is_symbol_input, input_text, temp_text):
+        return (_clean_text(input_text, hps.data.text_cleaners), input_text) if is_symbol_input \
+            else (temp_text, temp_text)
 
-    return to_phoneme_fn
+    return to_symbol_fn
 
 
 css = """
@@ -141,6 +140,10 @@ css = """
 """
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
+    args = parser.parse_args()
+
     models_tts = []
     models_vc = []
     models_soft_vc = []
@@ -170,50 +173,55 @@ if __name__ == '__main__':
         if t == "vits":
             models_tts.append((name, cover_path, speakers, lang, example,
                                hps.symbols, create_tts_fn(model, hps, speaker_ids),
-                               create_to_phoneme_fn(hps)))
+                               create_to_symbol_fn(hps)))
             models_vc.append((name, cover_path, speakers, create_vc_fn(model, hps, speaker_ids)))
         elif t == "soft-vits-vc":
             models_soft_vc.append((name, cover_path, speakers, create_soft_vc_fn(model, hps, speaker_ids)))
 
-    hubert = torch.hub.load("bshall/hubert:main", "hubert_soft")
+    hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True)
 
     app = gr.Blocks(css=css)
 
     with app:
         gr.Markdown("# Moe TTS And Voice Conversion Using VITS Model\n\n"
-                    "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n")
+                    "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n"
+                    "[Open In Colab]"
+                    "(https://colab.research.google.com/drive/14Pb8lpmwZL-JI5Ub6jpG4sz2-8KS0kbS?usp=sharing)"
+                    " without queue and length limitation")
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
                     for i, (name, cover_path, speakers, lang, example, symbols, tts_fn,
-                            to_phoneme_fn) in enumerate(models_tts):
+                            to_symbol_fn) in enumerate(models_tts):
                         with gr.TabItem(f"model{i}"):
                             with gr.Column():
                                 cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                                 gr.Markdown(f"## {name}\n\n"
                                             f"{cover_markdown}"
                                             f"lang: {lang}")
-                                tts_input1 = gr.TextArea(label="Text (120 words limitation)", value=example,
+                                tts_input1 = gr.TextArea(label="Text (150 words limitation)", value=example,
                                                          elem_id=f"tts-input{i}")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
                                                          type="index", value=speakers[0])
                                 tts_input3 = gr.Slider(label="Speed", value=1, minimum=0.5, maximum=2, step=0.1)
                                 with gr.Accordion(label="Advanced Options", open=False):
-                                    phoneme_input = gr.Checkbox(value=False, label="Phoneme input")
-                                    to_phoneme_btn = gr.Button("Covert text to phoneme")
-                                    phoneme_list = gr.Dataset(label="Phoneme list", components=[tts_input1],
-                                                              samples=[[x] for x in symbols],
-                                                              elem_id=f"phoneme-list{i}")
-                                    phoneme_list_json = gr.Json(value=symbols, visible=False)
+                                    temp_text_var = gr.Variable()
+                                    symbol_input = gr.Checkbox(value=False, label="Symbol input")
+                                    symbol_list = gr.Dataset(label="Symbol list", components=[tts_input1],
+                                                             samples=[[x] for x in symbols],
+                                                             elem_id=f"symbol-list{i}")
+                                    symbol_list_json = gr.Json(value=symbols, visible=False)
                                 tts_submit = gr.Button("Generate", variant="primary")
                                 tts_output1 = gr.Textbox(label="Output Message")
                                 tts_output2 = gr.Audio(label="Output Audio")
-                                tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, phoneme_input],
+                                tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, symbol_input],
                                                  [tts_output1, tts_output2])
-                                to_phoneme_btn.click(to_phoneme_fn, [tts_input1], [tts_input1])
-                                phoneme_list.click(None, [phoneme_list, phoneme_list_json], [],
-                                                   _js=f"""
-                                (i,phonemes) => {{
+                                symbol_input.change(to_symbol_fn,
+                                                    [symbol_input, tts_input1, temp_text_var],
+                                                    [tts_input1, temp_text_var])
+                                symbol_list.click(None, [symbol_list, symbol_list_json], [],
+                                                  _js=f"""
+                                (i,symbols) => {{
                                     let root = document.querySelector("body > gradio-app");
                                     if (root.shadowRoot != null)
                                         root = root.shadowRoot;
@@ -221,12 +229,12 @@ if __name__ == '__main__':
                                     let startPos = text_input.selectionStart;
                                     let endPos = text_input.selectionEnd;
                                     let oldTxt = text_input.value;
-                                    let result = oldTxt.substring(0, startPos) + phonemes[i] + oldTxt.substring(endPos);
+                                    let result = oldTxt.substring(0, startPos) + symbols[i] + oldTxt.substring(endPos);
                                     text_input.value = result;
                                     let x = window.scrollX, y = window.scrollY;
                                     text_input.focus();
-                                    text_input.selectionStart = startPos + phonemes[i].length;
-                                    text_input.selectionEnd = startPos + phonemes[i].length;
+                                    text_input.selectionStart = startPos + symbols[i].length;
+                                    text_input.selectionEnd = startPos + symbols[i].length;
                                     text_input.blur();
                                     window.scrollTo(x, y);
                                     return [];
@@ -278,4 +286,4 @@ if __name__ == '__main__':
             "- [https://github.com/luoyily/MoeTTS](https://github.com/luoyily/MoeTTS)\n"
             "- [https://github.com/Francis-Komizu/Sovits](https://github.com/Francis-Komizu/Sovits)"
         )
-    app.queue(concurrency_count=3).launch(show_api=False)
+    app.queue(concurrency_count=3).launch(show_api=False, share=args.share)
