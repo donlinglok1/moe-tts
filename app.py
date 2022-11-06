@@ -62,9 +62,9 @@ def create_tts_fn(model, hps, speaker_ids):
         speaker_id = speaker_ids[speaker]
         stn_tst = get_text(text, hps, is_symbol)
         with no_grad():
-            x_tst = stn_tst.unsqueeze(0)
-            x_tst_lengths = LongTensor([stn_tst.size(0)])
-            sid = LongTensor([speaker_id])
+            x_tst = stn_tst.unsqueeze(0).to(device)
+            x_tst_lengths = LongTensor([stn_tst.size(0)]).to(device)
+            sid = LongTensor([speaker_id]).to(device)
             audio = model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8,
                                 length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
         del stn_tst, x_tst, x_tst_lengths, sid
@@ -94,10 +94,10 @@ def create_vc_fn(model, hps, speaker_ids):
             y = y.unsqueeze(0)
             spec = spectrogram_torch(y, hps.data.filter_length,
                                      hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
-                                     center=False)
-            spec_lengths = LongTensor([spec.size(-1)])
-            sid_src = LongTensor([original_speaker_id])
-            sid_tgt = LongTensor([target_speaker_id])
+                                     center=False).to(device)
+            spec_lengths = LongTensor([spec.size(-1)]).to(device)
+            sid_src = LongTensor([original_speaker_id]).to(device)
+            sid_tgt = LongTensor([target_speaker_id]).to(device)
             audio = model.voice_conversion(spec, spec_lengths, sid_src=sid_src, sid_tgt=sid_tgt)[0][
                 0, 0].data.cpu().float().numpy()
         del y, spec, spec_lengths, sid_src, sid_tgt
@@ -125,10 +125,10 @@ def create_soft_vc_fn(model, hps, speaker_ids):
         if sampling_rate != 16000:
             audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=16000)
         with torch.inference_mode():
-            units = hubert.units(torch.FloatTensor(audio).unsqueeze(0).unsqueeze(0))
+            units = hubert.units(torch.FloatTensor(audio).unsqueeze(0).unsqueeze(0).to(device))
         with no_grad():
-            unit_lengths = LongTensor([units.size(1)])
-            sid = LongTensor([target_speaker_id])
+            unit_lengths = LongTensor([units.size(1)]).to(device)
+            sid = LongTensor([target_speaker_id]).to(device)
             audio = model.infer(units, unit_lengths, sid=sid, noise_scale=.667,
                                 noise_scale_w=0.8)[0][0, 0].data.cpu().float().numpy()
         del units, unit_lengths, sid
@@ -147,9 +147,11 @@ def create_to_symbol_fn(hps):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
     args = parser.parse_args()
 
+    device = torch.device(args.device)
     models_tts = []
     models_vc = []
     models_soft_vc = []
@@ -171,7 +173,7 @@ if __name__ == '__main__':
             n_speakers=hps.data.n_speakers,
             **hps.model)
         utils.load_checkpoint(model_path, model, None)
-        model.eval()
+        model.eval().to(device)
         speaker_ids = [sid for sid, name in enumerate(hps.speakers) if name != "None"]
         speakers = [name for sid, name in enumerate(hps.speakers) if name != "None"]
 
@@ -184,7 +186,7 @@ if __name__ == '__main__':
         elif t == "soft-vits-vc":
             models_soft_vc.append((name, cover_path, speakers, create_soft_vc_fn(model, hps, speaker_ids)))
 
-    hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True)
+    hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True).to(device)
 
     app = gr.Blocks()
 
