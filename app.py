@@ -145,6 +145,24 @@ def create_to_symbol_fn(hps):
     return to_symbol_fn
 
 
+download_audio_js = """
+() =>{{
+    let root = document.querySelector("body > gradio-app");
+    if (root.shadowRoot != null)
+        root = root.shadowRoot;
+    let audio = root.querySelector("#{audio_id}").querySelector("audio");
+    if (audio == undefined)
+        return;
+    audio = audio.src.replace("audio/wav", "audio/octet-stream");
+    let oA = document.createElement("a");
+    oA.download = Math.floor(Math.random()*100000000)+'.wav';
+    oA.href = audio;
+    document.body.appendChild(oA);
+    oA.click();
+    oA.remove();
+}}
+"""
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cpu')
@@ -221,7 +239,10 @@ if __name__ == '__main__':
                                     symbol_list_json = gr.Json(value=symbols, visible=False)
                                 tts_submit = gr.Button("Generate", variant="primary")
                                 tts_output1 = gr.Textbox(label="Output Message")
-                                tts_output2 = gr.Audio(label="Output Audio")
+                                tts_output2 = gr.Audio(label="Output Audio", elem_id=f"tts-audio{i}")
+                                download = gr.Button("Download Audio")
+                                download.click(None, [], [], _js=download_audio_js.format(audio_id=f"tts-audio{i}"))
+
                                 tts_submit.click(tts_fn, [tts_input1, tts_input2, tts_input3, symbol_input],
                                                  [tts_output1, tts_output2])
                                 symbol_input.change(to_symbol_fn,
@@ -262,7 +283,9 @@ if __name__ == '__main__':
                             vc_input3 = gr.Audio(label="Input Audio (30s limitation)")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
-                            vc_output2 = gr.Audio(label="Output Audio")
+                            vc_output2 = gr.Audio(label="Output Audio", elem_id=f"vc-audio{i}")
+                            download = gr.Button("Download Audio")
+                            download.click(None, [], [], _js=download_audio_js.format(audio_id=f"vc-audio{i}"))
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
             with gr.TabItem("Soft Voice Conversion"):
                 with gr.Tabs():
@@ -281,7 +304,9 @@ if __name__ == '__main__':
                                     vc_input3 = gr.Audio(label="Input Audio (30s limitation)", source="upload")
                             vc_submit = gr.Button("Convert", variant="primary")
                             vc_output1 = gr.Textbox(label="Output Message")
-                            vc_output2 = gr.Audio(label="Output Audio")
+                            vc_output2 = gr.Audio(label="Output Audio", elem_id=f"svc-audio{i}")
+                            download = gr.Button("Download Audio")
+                            download.click(None, [], [], _js=download_audio_js.format(audio_id=f"svc-audio{i}"))
                             # clear inputs
                             source_tabs.set_event_trigger("change", None, [], [vc_input2, vc_input3],
                                                           js="()=>[null,null]")
