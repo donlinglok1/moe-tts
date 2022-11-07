@@ -153,7 +153,7 @@ download_audio_js = """
     let audio = root.querySelector("#{audio_id}").querySelector("audio");
     if (audio == undefined)
         return;
-    audio = audio.src.replace("audio/wav", "audio/octet-stream");
+    audio = audio.src;
     let oA = document.createElement("a");
     oA.download = Math.floor(Math.random()*100000000)+'.wav';
     oA.href = audio;
