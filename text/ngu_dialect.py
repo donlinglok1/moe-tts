@@ -13,7 +13,7 @@ converters = {}
 
 for dialect in dialects.values():
     try:
-        converters[dialect] = opencc.OpenCC(dialect)
+        converters[dialect] = opencc.OpenCC("chinese_dialect_lexicons/"+dialect)
     except:
         pass
 
