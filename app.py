@@ -177,6 +177,7 @@ if __name__ == '__main__':
         models_info = json.load(f)
     for i, info in models_info.items():
         name = info["title"]
+        author = info["author"]
         lang = info["lang"]
         example = info["example"]
         config_path = f"saved_model/{i}/config.json"
@@ -197,12 +198,12 @@ if __name__ == '__main__':
 
         t = info["type"]
         if t == "vits":
-            models_tts.append((name, cover_path, speakers, lang, example,
+            models_tts.append((name, author, cover_path, speakers, lang, example,
                                hps.symbols, create_tts_fn(model, hps, speaker_ids),
                                create_to_symbol_fn(hps)))
-            models_vc.append((name, cover_path, speakers, create_vc_fn(model, hps, speaker_ids)))
+            models_vc.append((name, author, cover_path, speakers, create_vc_fn(model, hps, speaker_ids)))
         elif t == "soft-vits-vc":
-            models_soft_vc.append((name, cover_path, speakers, create_soft_vc_fn(model, hps, speaker_ids)))
+            models_soft_vc.append((name, author, cover_path, speakers, create_soft_vc_fn(model, hps, speaker_ids)))
 
     hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True).to(device)
 
@@ -217,14 +218,15 @@ if __name__ == '__main__':
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
-                    for i, (name, cover_path, speakers, lang, example, symbols, tts_fn,
+                    for i, (name, author, cover_path, speakers, lang, example, symbols, tts_fn,
                             to_symbol_fn) in enumerate(models_tts):
                         with gr.TabItem(f"model{i}"):
                             with gr.Column():
                                 cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                                 gr.Markdown(f"## {name}\n\n"
                                             f"{cover_markdown}"
-                                            f"lang: {lang}")
+                                            f"model author: {author}\n\n"
+                                            f"language: {lang}")
                                 tts_input1 = gr.TextArea(label="Text (150 words limitation)", value=example,
                                                          elem_id=f"tts-input{i}")
                                 tts_input2 = gr.Dropdown(label="Speaker", choices=speakers,
@@ -271,11 +273,12 @@ if __name__ == '__main__':
 
             with gr.TabItem("Voice Conversion"):
                 with gr.Tabs():
-                    for i, (name, cover_path, speakers, vc_fn) in enumerate(models_vc):
+                    for i, (name, author, cover_path, speakers, vc_fn) in enumerate(models_vc):
                         with gr.TabItem(f"model{i}"):
                             cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                             gr.Markdown(f"## {name}\n\n"
-                                        f"{cover_markdown}")
+                                        f"{cover_markdown}"
+                                        f"model author: {author}")
                             vc_input1 = gr.Dropdown(label="Original Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
                             vc_input2 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
@@ -289,11 +292,12 @@ if __name__ == '__main__':
                             vc_submit.click(vc_fn, [vc_input1, vc_input2, vc_input3], [vc_output1, vc_output2])
             with gr.TabItem("Soft Voice Conversion"):
                 with gr.Tabs():
-                    for i, (name, cover_path, speakers, soft_vc_fn) in enumerate(models_soft_vc):
+                    for i, (name, author, cover_path, speakers, soft_vc_fn) in enumerate(models_soft_vc):
                         with gr.TabItem(f"model{i}"):
                             cover_markdown = f"![cover](file/{cover_path})\n\n" if cover_path else ""
                             gr.Markdown(f"## {name}\n\n"
-                                        f"{cover_markdown}")
+                                        f"{cover_markdown}"
+                                        f"model author: {author}")
                             vc_input1 = gr.Dropdown(label="Target Speaker", choices=speakers, type="index",
                                                     value=speakers[0])
                             source_tabs = gr.Tabs()
