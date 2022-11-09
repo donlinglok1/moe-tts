@@ -214,7 +214,9 @@ if __name__ == '__main__':
                     "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=skytnt.moegoe)\n\n"
                     "[Open In Colab]"
                     "(https://colab.research.google.com/drive/14Pb8lpmwZL-JI5Ub6jpG4sz2-8KS0kbS?usp=sharing)"
-                    " without queue and length limitation")
+                    " without queue and length limitation.\n\n"
+                    "Feel free to [open discussion](https://huggingface.co/spaces/skytnt/moe-tts/discussions/new) "
+                    "if you want to add your model to this app.")
         with gr.Tabs():
             with gr.TabItem("TTS"):
                 with gr.Tabs():
