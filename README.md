@@ -1,3 +1,5 @@
+- Frok form https://huggingface.co/spaces/skytnt/moe-tts
+
 ---
 title: Moe TTS
 emoji: 😊🎙️
